@@ -1,0 +1,68 @@
+model:
+  d_model: 256
+  d_target: 128
+  d_time: 64
+  n_blocks: 6
+  d_head: 64
+  n_heads: 4
+  dropout: 0.1
+  T: 500
+  num_aa_types: 26
+  max_chi: 4
+
+data:
+  data_root: "./data"
+  max_residues: 20
+  max_targets: 3
+  max_atoms: 14
+  batch_size: 16
+  num_workers: 4
+  pin_memory: true
+
+lr: 1.0e-4
+weight_decay: 1.0e-5
+grad_clip: 1.0
+mixed_precision: true
+warmup_steps: 1000
+log_interval: 50
+save_interval: 1000
+checkpoint_dir: "./checkpoints"
+log_dir: "./logs"
+seed: 42
+
+phases:
+  - name: pretrain
+    epochs: 100
+    loss_weights:
+      torsion: 1.0
+      type: 0.1
+      cyclo: 0.0
+      affinity: 0.0
+      geometry: 0.01
+    max_targets: 1
+    use_cyclo: false
+    use_affinity: false
+
+  - name: multi_target_cyclo
+    epochs: 50
+    loss_weights:
+      torsion: 1.0
+      type: 0.1
+      cyclo: 0.5
+      affinity: 0.0
+      geometry: 0.01
+    max_targets: 3
+    use_cyclo: true
+    use_affinity: false
+
+  - name: affinity_finetune
+    epochs: 30
+    loss_weights:
+      torsion: 1.0
+      type: 0.05
+      cyclo: 0.5
+      affinity: 0.1
+      geometry: 0.01
+    max_targets: 3
+    use_cyclo: true
+    use_affinity: true
