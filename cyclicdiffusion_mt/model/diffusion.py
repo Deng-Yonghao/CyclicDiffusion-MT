@@ -14,15 +14,21 @@ class WrappedNormalDiffusion(nn.Module):
         super().__init__()
         self.T = T
         alpha_bar = cosine_schedule(T)
+        beta = 1 - alpha_bar[1:] / alpha_bar[:-1].clamp(min=1e-8)
+        beta = torch.clamp(beta, max=0.999)
         self.register_buffer('alpha_bar', alpha_bar)
-        self.register_buffer('beta', 1 - alpha_bar[1:]/alpha_bar[:-1].clamp(min=1e-8))
+        self.register_buffer('beta', beta)
 
     def q_sample(self, tau_0, t):
-        """Forward noising: tau_0 (B,L,7) + t (B,) -> tau_t, noise."""
+        """Forward noising: tau_0 (B,L,7) + t (B,) -> tau_t, noise.
+
+        For wrapped normal diffusion on angular variables, the forward
+        process adds noise centered at tau_0 — we do NOT scale tau_0 by
+        sqrt(alpha_bar), which would bias angles toward zero.
+        """
         a_bar = self.alpha_bar[t]  # (B,)
         noise = torch.randn_like(tau_0)
-        # Wrapped addition: (tau_0 + sqrt(1-a_bar)*noise) mod 2pi - pi
-        tau_t = tau_0 * a_bar.view(-1,1,1).sqrt() + noise * (1-a_bar).view(-1,1,1).sqrt()
+        tau_t = tau_0 + noise * (1 - a_bar).view(-1, 1, 1).sqrt()
         tau_t = torch.atan2(torch.sin(tau_t), torch.cos(tau_t))
         return tau_t, noise
 
@@ -53,14 +59,14 @@ class MaskedDiscreteDiffusion(nn.Module):
                           a_0)
         return a_t
 
-    def loss(self, logits, a_0):
-        """Cross-entropy loss for AA type prediction. logits:(B,L,26) a_0:(B,L)."""
+    def loss(self, a_0, logits):
+        """Cross-entropy loss for AA type prediction. a_0:(B,L) logits:(B,L,26)."""
         return F.cross_entropy(logits.view(-1, self.num_classes), a_0.view(-1),
                                ignore_index=self.mask_idx)
 
     @torch.no_grad()
-    def p_sample(self, logits, a_t):
-        """Sample a_{t-1} from predicted a_0 logits. logits:(B,L,26) a_t:(B,L)."""
+    def p_sample(self, logits, a_t, t):
+        """Sample a_{t-1} from predicted a_0 logits. logits:(B,L,26) a_t:(B,L) t:(B,)."""
         probs = F.softmax(logits, dim=-1)
         a_pred = torch.multinomial(probs.view(-1, self.num_classes), 1).view_as(a_t)
         # For non-masked positions, keep original (only unmask masked ones)

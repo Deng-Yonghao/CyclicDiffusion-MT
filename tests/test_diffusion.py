@@ -54,5 +54,5 @@ class TestMaskedDiscreteDiffusion:
     def test_loss_shape(self, diff):
         a_0 = torch.randint(0,25,(2,10))
         logits = torch.randn(2,10,26)
-        loss = diff.loss(logits, a_0)
+        loss = diff.loss(a_0, logits)
         assert loss.ndim == 0
