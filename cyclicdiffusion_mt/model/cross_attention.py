@@ -13,7 +13,7 @@ class AdaptiveTargetGating(nn.Module):
         self.gate = nn.Sequential(
             nn.Linear(d_target + d_time, hidden),
             nn.SiLU(),
-            nn.Linear(hidden, 1),
+            nn.Linear(hidden, 1, bias=False),  # bias cancels in softmax
         )
 
     def forward(self, target_feats, t_emb):
