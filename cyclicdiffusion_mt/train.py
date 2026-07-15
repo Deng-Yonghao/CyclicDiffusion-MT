@@ -56,6 +56,7 @@ class TrainingLoop:
         ).to(self.device)
 
         self.nerf = NeRF().to(self.device)
+        self.nerf.init_frame.requires_grad_(False)
 
         # Optimizer
         self.optimizer = torch.optim.AdamW(

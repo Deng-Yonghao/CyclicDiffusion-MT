@@ -31,7 +31,11 @@ class MultiTargetDataset(Dataset):
 
 
 class PeptideDataCollate:
-    """Collate function to pad variable-length peptides and targets into batches."""
+    """Collate function to pad variable-length peptides and targets into batches.
+
+    NOTE: All samples in a batch must share the same target structures.
+    target_coords and target_sequences are taken from batch[0] only.
+    """
     def __init__(self, max_residues=MAX_RESIDUES, max_atoms=14, pad_torsion=0.0, pad_aa=25):
         self.max_residues = max_residues
         self.max_atoms = max_atoms
@@ -40,6 +44,14 @@ class PeptideDataCollate:
 
     def __call__(self, batch):
         B = len(batch)
+
+        # Verify homogeneous targets (all samples share same targets)
+        if B > 1:
+            first_k = len(batch[0].get('target_coords', []))
+            for b_idx in range(1, B):
+                assert len(batch[b_idx].get('target_coords', [])) == first_k, \
+                    "PeptideDataCollate requires all batch samples to have the same number of targets"
+
         L_max = max(item['peptide_aa_types'].shape[0] for item in batch)
         L_max = min(L_max, self.max_residues)
 

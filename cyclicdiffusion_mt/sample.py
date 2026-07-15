@@ -134,6 +134,10 @@ class Sampler:
         self.denoiser.eval()
         self.nerf.eval()
 
+        # Move targets to device
+        target_feats = [tf.to(self.device) for tf in target_feats]
+        target_masks = [tm.to(self.device) for tm in target_masks]
+
         if num_steps is None:
             num_steps = self.T
 
