@@ -44,3 +44,26 @@ class TestNeRF:
         torsions=torch.rand(B,L,7)*2*torch.pi-torch.pi
         coords=nerf(bonds,angles,torsions,aa)
         assert not torch.isnan(coords).any()
+
+    def test_roundtrip(self, nerf):
+        """inverse(forward(...)) recovers original internal coords for placed atoms.
+
+        Atoms 0-2 are placed from init_frame (not using input params), so they
+        don't roundtrip. Atoms 3+ use place_atom with the input params and
+        should be exactly recoverable.
+        """
+        B, L = 2, 4
+        aa = torch.zeros(B, L, dtype=torch.long)  # ALA: 5 atoms (N, CA, C, O, CB)
+        bonds = torch.rand(B, L, 14) * 0.1 + 1.3
+        angles = torch.rand(B, L, 14) * 0.3 + 1.9
+        torsions = torch.rand(B, L, 7) * 2 * torch.pi - torch.pi
+
+        coords = nerf(bonds, angles, torsions, aa)
+        rec_bonds, rec_angles, rec_torsions = nerf.inverse(coords, aa)
+
+        # ALA has 5 atoms: atoms 3 (O) and 4 (CB) are placed via place_atom
+        n_atoms = 5
+        assert torch.allclose(bonds[:, :, 3:n_atoms], rec_bonds[:, :, 3:n_atoms], atol=1e-4)
+        assert torch.allclose(angles[:, :, 3:n_atoms], rec_angles[:, :, 3:n_atoms], atol=1e-4)
+        # Torsions: index 2 (omega) from O dihedral, index 3 (chi1) from CB
+        assert torch.allclose(torsions[:, :, 2:4], rec_torsions[:, :, 2:4], atol=1e-4)

@@ -51,7 +51,14 @@ class NeRF(nn.Module):
         return coords
 
     def inverse(self, coords, aa_types):
-        """coords:(B,L,14,3) -> bonds:(B,L,14), angles:(B,L,14), torsions:(B,L,7)"""
+        """coords:(B,L,14,3) -> bonds:(B,L,14), angles:(B,L,14), torsions:(B,L,7)
+
+        Note: Only torsions that can be computed from intra-residue atoms are
+        recovered. Torsion indices 0 (phi) and 1 (psi) require inter-residue
+        neighbors and are left as zero; index 2 (omega) is recovered from the
+        N-CA-C-O dihedral; indices 3+ (chi angles) are recovered from sidechain
+        dihedrals.
+        """
         B, L = coords.shape[0], coords.shape[1]
         device = coords.device
         bonds = torch.zeros(B, L, 14, device=device)
@@ -83,14 +90,31 @@ class NeRF(nn.Module):
         return coords[b,i,a-3], coords[b,i,a-2], coords[b,i,a-1]
 
     def _get_torsion(self, torsions, b, i, a):
+        """Map atom index to torsion angle index.
+
+        Backbone (atoms 0-3) -- 4 backbone atoms share 3 torsion angles:
+          - atom 0 (N)  -> index 0 (phi)
+          - atom 1 (CA) -> index 1 (psi)
+          - atom 2 (C)  -> index 2 (omega)
+          - atom 3 (O)  -> index 2 (omega, same peptide plane as C)
+        Sidechain (atoms 4+): chi angles start at index 3.
+        """
         if a < 4: return torsions[b,i,min(a,2)]
         chi = a-4; return torsions[b,i,3+chi] if chi < 4 else torch.tensor(0.0,device=torsions.device)
 
-    def _dihedral(self, r1,r2,r3,r4):
-        b1,b2,b3 = r2-r1, r3-r2, r4-r3
-        n1 = normalize(torch.cross(b1.unsqueeze(0),b2.unsqueeze(0)).squeeze(0))
-        n2 = normalize(torch.cross(b2.unsqueeze(0),b3.unsqueeze(0)).squeeze(0))
-        m1 = torch.cross(n1.unsqueeze(0), normalize(b2.unsqueeze(0)).squeeze(0)).squeeze(0)
-        x = (n1*n2).sum()
-        y = (m1*n2).sum()
+    def _dihedral(self, r1, r2, r3, r4):
+        """Compute torsion angle from 4 points (each shape (3,)).
+
+        Standard dihedral formula gives the angle between plane normals,
+        which differs from the NeRF rotation angle tau by pi. Negating the
+        x term maps back to the physical torsion angle so that
+        ``inverse(forward(...))`` is identity for placed atoms.
+        """
+        b1, b2, b3 = r2 - r1, r3 - r2, r4 - r3
+        n1 = normalize(torch.cross(b1, b2, dim=0))
+        n2 = normalize(torch.cross(b2, b3, dim=0))
+        m1 = torch.cross(n1, normalize(b2), dim=0)
+        # Negate x to recover tau rather than pi - tau.
+        x = -(n1 * n2).sum()
+        y = (m1 * n2).sum()
         return torch.atan2(y, x)
