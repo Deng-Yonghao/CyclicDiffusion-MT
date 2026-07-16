@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cyclicdiffusion-mt"
+version = "0.1.0"
+description = "Multi-Target Full-Atom Cyclic Peptide Generation via Diffusion Models"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "CyclicDiffusion-MT Dev"}
+]
+keywords = [
+    "diffusion-models",
+    "cyclic-peptides",
+    "protein-design",
+    "computational-biology",
+    "deep-learning",
+    "multi-target-drug-design",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "tensorboard>=2.13",
+]
+
+[tool.setuptools.packages.find]
+include = ["cyclicdiffusion_mt*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

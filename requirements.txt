@@ -1,0 +1,16 @@
+# Core
+torch>=2.0.0
+pyyaml>=6.0
+
+# Protein data processing
+biopython>=1.80
+
+# Chemical validation
+rdkit>=2023.03
+
+# Experiment tracking (optional)
+# tensorboard>=2.13
+# wandb>=0.15
+
+# Testing
+pytest>=7.0

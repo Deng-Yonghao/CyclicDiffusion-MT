@@ -1,12 +1,62 @@
+# --- Python ---
 __pycache__/
 *.pyc
 *.pyo
-.eggs/
 *.egg-info/
+.eggs/
 dist/
 build/
-.pytest_cache/
+*.egg
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+.env
+
+# --- Model checkpoints ---
 *.pt
 *.pth
+checkpoints/
+logs/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS generated ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Jupyter ---
 .ipynb_checkpoints/
+*.ipynb
+
+# --- Experiment tracking ---
+wandb/
+tensorboard/
+*.tfevents.*
+
+# --- Testing ---
+.pytest_cache/
+htmlcov/
+.coverage
+*.cover
+
+# --- Claude / Superpowers (local settings only) ---
 .superpowers/
+.claude/settings.local.json
+
+# --- Data (generated/manifest, not raw) ---
+CPCore/
+data/
+*.tar.gz
+*.zip
+
+# --- Environment ---
+.env
+.env.local
