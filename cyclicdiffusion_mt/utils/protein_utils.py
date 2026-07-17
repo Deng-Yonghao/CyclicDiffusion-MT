@@ -68,7 +68,7 @@ def extract_peptide_residues(pdb_path, chain_id='L'):
     Returns:
         list of dicts, each with:
             res_name: str (3-letter AA code)
-            res_seq: int (original PDB residue number)
+            res_seq_num: int (original PDB residue number)
             atoms: dict[str, tuple(float, float, float)]  atom_name -> (x,y,z)
     """
     records = _parse_pdb_lines(pdb_path)
@@ -85,14 +85,12 @@ def extract_peptide_residues(pdb_path, chain_id='L'):
         if seq not in residues:
             residues[seq] = {
                 'res_name': r['res_name'],
-                'res_seq': seq,
+                'res_seq_num': seq,
                 'atoms': {},
             }
-        atom_name = r['atom_name']
-        # Skip hydrogens
-        if r['element'] == 'H' and atom_name.startswith('H') and len(atom_name) <= 3:
-            continue
-        residues[seq]['atoms'][atom_name] = (r['x'], r['y'], r['z'])
+        # Store all atoms — no hydrogen filter. ATOM_NAME_MAP handles
+        # mapping 'H' (backbone amide hydrogen) to 'N' downstream.
+        residues[seq]['atoms'][r['atom_name']] = (r['x'], r['y'], r['z'])
 
     # Sort by sequence number and return
     return [residues[s] for s in sorted(residues.keys())]
@@ -121,11 +119,10 @@ def extract_target_coords(pdb_path, chain_id='R'):
                 'res_name': r['res_name'],
                 'atoms': {},
             }
-        atom_name = r['atom_name']
-        # Skip hydrogens
-        if r['element'] == 'H' and atom_name.startswith('H') and len(atom_name) <= 3:
-            continue
-        by_res[seq]['atoms'][atom_name] = (r['x'], r['y'], r['z'])
+        # Store all atoms — no hydrogen filter. ATOM_NAME_MAP handles
+        # mapping hydrogen names ('H', 'HA', 'HB1', etc.) to their
+        # corresponding heavy-atom names during coordinate extraction.
+        by_res[seq]['atoms'][r['atom_name']] = (r['x'], r['y'], r['z'])
 
     sorted_seqs = sorted(by_res.keys())
     N = len(sorted_seqs)
@@ -156,19 +153,3 @@ def extract_target_coords(pdb_path, chain_id='R'):
                         break
 
     return coords, aa_sequence
-
-
-def parse_pdb_cyclic(pdb_path):
-    """Parse CPCore PDB into internal coordinates.
-
-    Args:
-        pdb_path: path to a CPCore-format PDB file.
-
-    Returns:
-        dict with keys:
-            peptide_torsions: (N, 7) tensor of torsion angles (phi, psi, omega, chi1-4)
-            peptide_aa_types: (N,) tensor of AA type indices (0-24)
-            target_coords: list of (N_k, 14, 3) tensors, one per target chain
-            target_sequences: list of (N_k,) tensors, one per target chain
-    """
-    raise NotImplementedError("Will be implemented in a future task")
